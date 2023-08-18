@@ -1,0 +1,51 @@
+---
+title: "Introduction"
+author: "Lawrence Y. Tello and David Connell"
+date: "8/11/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# R Markdown Introduction
+
+Welcome to PHW251: R for Public Health!
+
+We're excited that you're here and look forward to a semester with you and R. The current file you are looking at is called an "R Markdown" or file, which has the extension ".Rmd". We will use this type of R file for the semester because of its readability and capacity for creating *neat* PDFs for you to turn in. 
+  
+\newpage
+
+### RMarkdown Basics
+
+Below is a R chunk, which is where you type your code. You can run a single line of code by holding down Ctrl (on Windows) or Command (on Mac) and hitting the Enter/Return key. If you want to run the entire chunk, you can click the green arrow on the right-hand side of the chunk. Try both of these methods for the code below!
+
+```{r}
+print("hello world")
+```
+
+```{r}
+1+2
+answer <- 1+2
+```
+
+
+```{r}
+# this is a comment
+# anything following a hash/pound sign within a R chunk is a comment. 
+# comments are not evaluated when you run the code chunk
+# for example, the following code will not be evaluated:
+
+# 1+2
+
+# but this code will:
+1/2
+```
+
+Keyboard shortcut to knit: 
+Alt + Shift + K (Windows)
+Command + Shift + K (Mac)
+
+
+

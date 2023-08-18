@@ -1,0 +1,28 @@
+---
+title: "Functions Notebook"
+output: html_notebook
+---
+
+Why Functions?
+
+-  Save time (though the time saved is mostly in the future)
+-  Reduce potential errors
+-  Organize your code
+
+```{r}
+library(readr)
+library(dplyr)
+covid_masks <- read_csv("https://raw.githubusercontent.com/nytimes/covid-19-data/master/mask-use/mask-use-by-county.csv")
+# transform the never wear masks from percentages to a 5 category score
+covid_masks$never_cat <- case_when(covid_masks$NEVER <= .2 ~ 1,
+                                   covid_masks$NEVER <= .4 ~ 2,
+                                   covid_masks$NEVER <= .6 ~ 3,
+                                   covid_masks$NEVER <= .8 ~ 4,
+                                   covid_masks$NEVER == TRUE ~ 5,)
+# transform the rarely wear masks from percentages to a 5 category score
+covid_masks$rarely_cat <- case_when(covid_masks$RARELY <= .2 ~ 1,
+                                   covid_masks$RARELY <= .4 ~ 2,
+                                   covid_masks$RARELY <= .6 ~ 3,
+                                   covid_masks$RARELY <= .8 ~ 4,
+                                   covid_masks$RARELY == TRUE ~ 5,)
+```

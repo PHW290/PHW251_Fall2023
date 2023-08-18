@@ -1,0 +1,277 @@
+
+---
+title: "Toolkit - Getting started with R"
+author: "Lauren Nelson"
+date: "8/31/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(markdown)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Getting started with R 
+
+## What you should already know:
+* How to access the RStudio environment through Datahub
+* How to run code (Run button or control/command + Enter)
+* How to comment code (# or control/command + shift + C)
+
+## What is included in this toolkit:
+* Assigning values
+  + Naming objects
+  + Data types
+* Creating objects using functions
+  + Vectors
+  + Matrices
+  + Lists
+* Calculations and Comparisons
+
+## Assigning a value to an object
+
+```{r}
+#use "<-" as the operator to assign the value of 5 to the object named "x"
+x <- 5
+#return the value of x
+x
+
+#assign and return 
+(x <- 5)
+
+```
+
+
+### Naming objects
+
+* Names cannot start with numbers or symbols
+* R is case sensitive!! 
+* Best practices: 
+  + Use lower case 
+  + Use underscores to separate words in names 
+  
+```{r}
+#some users prefer what is called 'camelCase' which uses a capital letter 
+#to indicate a new word
+camelCase <- "camel"
+# CamelCase
+camelCase
+
+#we recommend using all lowercase and underscores to separate words
+snake_case <- "snake"
+
+```
+
+
+### Data types
+
+**Character values** 
+
+* Indicated by quotation marks ("" or ''); best practice is to use double quotes 
+* Can contain spaces, characters, symbols, and numbers
+
+```{r}
+#create a character value using double quotes
+ch_double <- "dog"
+#try using single quotes - this works, too
+ch_single <- 'dog'
+
+ch_double2 <- "turtle"
+
+#the code below will not work, as R is looking for an object named "dog" 
+#(since there are no quotations around it)
+# ch_no <- dog
+
+#if we create an objected named "dog"
+dog <- "puppy"
+
+#then re-run the line with no quotes, the value of "ch_no" will take on the
+#value of the object "dog" which makes ch_no = "puppy"
+ch_no <- dog
+ch_no
+
+#character values can be as long as you want
+ch_long <- "this is a really really long string that i want to save"
+
+
+```
+
+**Numbers** can be stored in three ways. 
+
+1. Numeric - both whole numbers or decimals
+2. Integer - similar to whole number by indicated with an “L”
+3. Complex 
+
+```{r}
+#numeric objects can be whole or decimal
+num_whole <- 290
+num_dec <- 290.9
+
+#integers are indicated by adding an "L"
+int <- 290L
+
+#complex
+complex <- 2+4i
+
+```
+
+**Logical:** Use all caps - TRUE or T, FALSE or F
+
+```{r}
+#two options for assigning a logical value to an object
+logical <- TRUE
+logical_1 <- T
+
+#this does not save as a true logical value, rather it saves the string 
+#"true" as a character
+logical_lower <- "true"
+
+```
+
+## Creating objects using functions
+
+**Vectors**
+
+(Atomic) Vectors
+
+- One dimensional, single data type
+- Multiple ways to be created:
+  + c() function
+  + Using : operator for a vector of consecutive numbers
+  
+```{r}
+#create a numeric vector using the c() function
+vec_num <- c(1,5,6,94)
+vec_num
+
+#create a numeric vector using the : operator
+vec_num2 <- 1:10
+
+#create a character vector using the c() function
+vec_char <- c("dog","cat","mouse")
+
+#try creating a vector with multiple data types - this will force 290 to be
+#stored as "290"
+vec_multi <- c(290,"ph")
+
+```
+
+
+**Matrices**
+
+* Multi-dimensional, single data type
+* Created using matrix() function
+
+```{r}
+#create a matrix using the : operator to define the data included
+matrix_1 <- matrix(data = 1:12, nrow = 3, ncol = 4, byrow = TRUE, dimnames = NULL)
+
+```
+
+**Lists**
+
+* One-dimensional, multiple data types and/or objects
+* Created using list() function
+```{r}
+#use the list function to see what happens if you add items of different types
+my_list <- list(290, "290")
+
+```
+
+More on data frames next week!
+
+
+### Using functions to describe objects 
+
+
+A few examples:
+
+* length() - how long is the object?
+* class() - what type of object is it?
+* typeof() - what data type is the object?
+
+```{r}
+#return information about matrix and vectors created above
+length(matrix_1) 
+class(matrix_1)
+typeof(matrix_1)
+
+length(vec_num2)
+typeof(vec_num2)
+
+typeof(vec_char)
+
+```
+
+## Calculations and comparisons
+
+### Calculations
+
+R can be used as a high-power calculator in the console and in the script. 
+
+Calculations can be made on numbers and objects.
+
+```{r}
+#calculations can be performed on numbers
+54*38743252349
+
+#and objects
+a <- 4
+b <- 75
+
+b/a
+
+#calculations can be performed on vectors
+vec_num2*10
+
+```
+
+
+New objects can be created as result of calculations.
+
+```{r}
+matrix_2 <- matrix_1 * 5
+
+c <- b-a
+
+```
+
+**Using functions for calculations**
+
+In addition to the operators above, there are many functions that can be used to do calculations. 
+
+```{r}
+#example: absolute value
+abs(-90)
+
+```
+
+### Comparisons
+
+Two values or objects can be compared to assess if equal (==), unequal (!=), less (< or <=), or greater (> or >=) and will return a true or false.
+
+```{r}
+5==40
+
+"dog"=="cat"
+
+a!=b
+
+b>c
+
+d <- (a+b)/c
+d
+
+d2 <- (a+b)>c
+d2
+
+```
+
+
+
+
+
+
+
+
+
