@@ -1,0 +1,163 @@
+---
+title: "Minimal Reproducible examples (reprex) in R"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+## Background
+Getting stuck is just part of programming. They key is finding a balance between working on your own to get yourself unstuck and asking for help from someone else, either a friend or colleague or somewhere online like google or stack overflow. It's important to challenge yourself and try to figure out what isn't working to exercise your problem solving muscles.  But it's equally important to avoid getting over-frustrated and never getting anything done. 
+
+When you do hit that tipping point, there are lots of resources out there (mentioned in earlier weeks, but never hurts to repeat - stack overflow, github, rstudio community, and the course Piazza). A surefire way to draw some ire out of the online R (or any programming language) community is to post a question without also providing a simple reproducible example. It is often difficult for potential helpers to provide a solution without a clear sense of the problem. A simple, reproducible example (sometimes referred to as reprex or MRE for Minimal Reproducible Example) provides a prospective problem solver a near-enough replica of the situation so that they can actually run it, see what's going wrong, and post a potential solution.
+
+Often just going through the process of creating a reprex will reveal the bug to you. It's anyone's guess as to whether that's from changing your perspective to write out the problem for someone else to understand your code, or just giving your brain a break.  But for whatever reason, it often works.
+
+## Simple Example:
+
+This is an over-simplified example, but when subsetting a dataframe using brackets, I always forget if the order is [column,row] or [row, column]. Let's say I'm trying to filter a big dataset to include on rows with age greater than 17 and on columns 1 and 5-12.
+
+`sub <- confidential_dataset[age > 17, c(1, 5:12)]`
+
+For some reason that I can't figure out, this is throwing an error. As much as I fiddle and try to get the right combination, I can't get it to work. So I'm going to post this problem to rstudio community.  
+
+Typically you will want to include as much as is needed to diagnose the problem and nothing more.  That usually includes:
+
+* A brief description of what you're trying to do and what is not working
+* The libraries you are using
+* A dataset
+* Simple, clean code
+* A summary of your R environment (including package versions, general settings etc)
+
+You'll want to be sure that what you share will actually run and at least show a similar error that you're experiencing.  What you want to avoid including is:
+
+* Extraneous detail
+* Any part of your dataset that is sensitive or confidential
+
+So here's what that looks like:
+```{r}
+# Description
+# I'm trying to pull out columns 1 plus 5 - 12 of the a data frame for rows representing adults. RStudio returns the following error when I run my code. Any ideas?
+
+# Error in `[.data.frame`(confidential_dataset, age > 17, c(1, 5:12)) : undefined columns selected
+
+```
+### Dataset
+The next step is to load any libraries you're using. Ideally you would include all libraries you're using on the project, because the problem could be caused by libraries that are using the same commands, or other interoperability issues.  But including too many libraries means that a potential assister would have to load a bunch of libraries in order to help you. So another spot where finding a balance is called for.
+
+(This particular example is not very good, since it only needs base R to run, but I'll add some just for context)
+```{r}
+# Description
+# I'm trying to pull out columns 1 plus 5 - 12 of the a data frame for rows representing adults. RStudio returns the following error when I run my code. Any ideas?
+
+# Error in `[.data.frame`(confidential_dataset, age > 17, c(1, 5:12)) : undefined columns selected
+
+library(dplyr)
+library(readr)
+
+```
+
+Next I'll need to allow the user to build a data frame so that they can replicate my problem. From a potential helper's perspective, the ideal MRE can just be copied straight from your posted question directly into an R session, so you want to limit anything unnecessarily complex about the dataset that is unrelated to your question. Regarding what you should share, there are a few considerations at this point:
+
+#### Public data available online
+If you're working with a publicly accessible dataset that is online, the easiest thing to do is just include a read_csv function and download the actual dataset the you're using. If it's a very large dataset, it would be kind to limit the number of rows to a sample and the number of columns to only those that are relevent to your question.
+```{r public_sample, echo=TRUE, eval=FALSE}
+ds_url = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
+read_csv(ds_url, n_max = 200)
+```
+
+#### Public data not online
+If instead you're working with a dataset that is not posted online, but is otherwise freely sharable with the public, you can include a sample of your dataset (typcially you don't need the whole thing to communicate the problem).  Base r has a handy function called "dput" that allows you to generate code to build a dataset out of data actually in a dataset. So let's say I wanted to share the first 8 rows of a data frame or tibble (it can be any data frame or tibble you have in your environment, but we'll use iris as an example)
+```{r test_dput, echo=TRUE, eval=FALSE}
+     # Create code to rebuild my dataset   
+    dput(iris[1:10,])  
+```   
+
+dput returns a structure function with all the code that is needed to rebuild my shrunken data frame.  So I just need to copy and paste into my MRE.   And then I can add the code that's not working. It's not likely going to be relevant for this class, since everyone is working on the same server, but usually it's a good idea to include sessionInfo() at the end of your reprex. Just in case it is something to do with a package or operating system version, this gives and not actually anything about your code.
+
+```{r sample_with_dput, echo=TRUE}
+
+# Description
+# I'm trying to pull out columns 1 plus 5 - 12 of the a data frame for rows representing adults. RStudio returns the following error when I run my code. Any ideas?
+
+# Error in `[.data.frame`(confidential_dataset, age > 17, c(1, 5:12)) : undefined columns selected
+
+library(dplyr)
+library(readr)
+
+# Dataset:
+test <- structure(list(mpg = c(21, 21, 22.8, 21.4, 18.7, 18.1, 14.3, 
+24.4, 22.8, 19.2), cyl = c(6, 6, 4, 6, 8, 6, 8, 4, 4, 6), disp = c(160, 
+160, 108, 258, 360, 225, 360, 146.7, 140.8, 167.6), hp = c(110, 
+110, 93, 110, 175, 105, 245, 62, 95, 123), drat = c(3.9, 3.9, 
+3.85, 3.08, 3.15, 2.76, 3.21, 3.69, 3.92, 3.92), wt = c(2.62, 
+2.875, 2.32, 3.215, 3.44, 3.46, 3.57, 3.19, 3.15, 3.44), qsec = c(16.46, 
+17.02, 18.61, 19.44, 17.02, 20.22, 15.84, 20, 22.9, 18.3), vs = c(0, 
+0, 1, 1, 0, 1, 0, 1, 1, 1), am = c(1, 1, 1, 0, 0, 0, 0, 0, 0, 
+0), gear = c(4, 4, 4, 3, 3, 3, 3, 4, 4, 4), carb = c(4, 4, 1, 
+1, 2, 1, 4, 2, 2, 4)), row.names = c("Mazda RX4", "Mazda RX4 Wag", 
+"Datsun 710", "Hornet 4 Drive", "Hornet Sportabout", "Valiant", 
+"Duster 360", "Merc 240D", "Merc 230", "Merc 280"), class = "data.frame")
+
+final <- test[test$mpg > 17, c(1, 5:11)]
+print(final)
+
+sessionInfo()
+```
+#### Non-sharable data
+
+If you're working with confidential, sensitive, or protected data (as most of you will be at some point in your careers), it's tempting to want to just remove or mask columns that contain those data and share a dataframe using the dput function.  But that's really risky and I strongly recommend against it.  It wouldn't take much more than an accidental keystroke to post sensitive data where it doesn't belong which could have unpleasant and negative consequences. Instead, I'd recommend either creating an obviously fake dataset using the data.frame() function using names from TV shows and made up data.
+```{r fake_dataframe, echo=FALSE}
+sample_data <- data.frame(first_name = c("Leslie", "Ron", "April", "Donna", "Greg"), last_name = c("Knope", "Swanson", "Ludgate", "Meagle", "Pikitis"), age = c(36, 42, 24, 26, 16), occupation=c("Deputy Director", "Director", "Assistant", "Boss", "Student"))
+```
+The other alternative is to find one of the included R datasets (like mtcars, iris, airlines, airquality, etc.) that bears enough resemblance to your source data frame or represents the problem you are struggling with well enough that it will be useful.  Note: You can get a list of available built-in datasets by typing data() into the console.  
+
+### Putting it all together
+So since my simple problem contains confidential data, I'm going to present my MLE with a built-in dataset that contains and age column.  Looking through the list, the Titanic dataset includes this, so I'm going to post my MLE using that dataset. I also know that I've only built in four columns, so I'll need to modify the c(1, 5:12) part of my query to something that will work with fewer columns, but will still be enough to answer my question.  So putting it all together, it would look like this:
+```{r put_it_all_together, echo=FALSE}
+
+# Description
+# I'm trying to pull out columns 1 plus 5 - 12 of the a data frame for rows representing adults. RStudio returns the following error when I run my code. Any ideas?
+
+# Error in `[.data.frame`(confidential_dataset, age > 17, c(1, 5:12)) : undefined columns selected
+
+library(dplyr)
+library(readr)
+sample_data <- data.frame(first_name = c("Leslie", "Ron", "April", "Donna", "Greg"), last_name = c("Knope", "Swanson", "Ludgate", "Meagle", "Pikitis"), age = c(36, 42, 24, 26, 16), occupation=c("Deputy Director", "Director", "Assistant", "Boss", "Student"))
+
+result <- sample_data[age > 17, c(1, 3:4)]
+
+
+```
+What I probably caught during the process of putting this together is in my original code, I got an undefined columns selected error, and because I didn't see the same error when I used the sample_data, it probably meant that my error was that I referred to columns 5:12, but there were fewer than 12 columns in the data frame.  So even going through that process probably would have revealed the original issue to me (even though I've now stumbled across another error in the process)
+
+## Reprex package
+The reprex package does a lot of cool things to make all of this easier, including taking code and comments in your script file and translating them to markdown or html for easy pasting onto a website.  Basically you can just wrap your code in a reprex::reprex function (make sure if you're wrapping your code you use both a parenthesis and a curly brace) and it produces a nicely formatted output. (to see the result, you'll need to run this section in an RStudio session).  This should produce some nicely formatted code in your viewer window as well as an MLE in a markdown format, both of which you can just copy and paste into a stackoverflow or rstudio community post!
+
+```{r mre_reprex, echo= TRUE, eval=FALSE}
+
+reprex::reprex({
+# Description
+# I'm trying to pull out columns 1 plus 5 - 12 of the a data frame for rows representing adults. RStudio returns the following error when I run my code. Any ideas?
+
+# Error in `[.data.frame`(confidential_dataset, age > 17, c(1, 5:12)) : undefined columns selected
+
+library(dplyr)
+library(readr)
+sample_data <- data.frame(first_name = c("Leslie", "Ron", "April", "Donna", "Greg"), last_name = c("Knope", "Swanson", "Ludgate", "Meagle", "Pikitis"), age = c(36, 42, 24, 26, 16), occupation=c("Deputy Director", "Director", "Assistant", "Boss", "Student"))
+
+result <- sample_data[age > 17, c(1, 3:4)]
+})
+
+```
+
+## Additional Thoughts
+
+It's good to look around at sites like github, stack overflow, and rstudio community sites to see how other users produce their reprex and how they are received by other commenters. It's also good to make sure your code is well organized and never a bad time to check whether your code follows [a style guide](https://reprex.tidyverse.org/articles/reprex-dos-and-donts.html)
+
+There are lots of good resources on creating good reprex. 
+
+* [The reprex package documentation](https://reprex.tidyverse.org/articles/reprex-dos-and-donts.html)
+* [A slide deck from Jenny Bryan](https://speakerdeck.com/jennybc/reprex-reproducible-examples-with-r)
+* [Hadley Wickham's thoughts on reprex](http://adv-r.had.co.nz/Reproducibility.html)
+* [Stack Overflow - though not R specific](https://stackoverflow.com/help/minimal-reproducible-example)
+
