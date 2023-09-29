@@ -1,0 +1,104 @@
+---
+title: "Visualizations: Creating tables with kable"
+output: pdf_document
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+
+filepath <- "https://data.chhs.ca.gov/dataset/4de76cd0-0ac9-4260-8ac3-0637acb444fb/resource/563ba92b-8ac5-48ec-9afd-2f515bbbad66/download/stds-by-disease-county-year-sex.csv"
+
+std <- read_csv(filepath) %>%
+  rename_with(~ tolower(gsub(" ","_",.x,fixed=TRUE))) 
+
+
+```
+
+## kable
+```{r}
+#table of STD case rates for Males in SF from 2013-2018
+std_sf_m <- std %>%
+  filter(county=="San Francisco" & year>=2013 & sex=="Male") %>%
+  select(disease,year, rate) %>%
+  pivot_wider(
+    names_from=disease, values_from=rate
+  ) %>%
+  mutate(year=as.character(year)) %>%
+  data.frame()
+
+# #format
+# kable(std_sf_m, format="pipe")
+# kable(std_sf_m, format="simple")
+# kable(std_sf_m, format="latex")
+# 
+# kable(std_sf_m,booktabs=T)
+# 
+# #digits
+# #using a vector to specify for each column
+# kable(std_sf_m,booktabs=T, digits=c(0,1,0,1))
+# 
+# #using a single value
+# kable(std_sf_m,booktabs=T, digits=0)
+# 
+# #row names
+# kable(std_sf_m,booktabs=T, row.names=T)
+# 
+# #column names
+# kable(std_sf_m,booktabs=T, col.names=str_to_title(gsub("[.]"," ",names(std_sf_m))))
+# kable(std_sf_m,booktabs=T, col.names=c("Year","CT","ES","GC"))
+# 
+# names(std_sf_m)
+# 
+# #align
+# kable(std_sf_m,booktabs=T, align='lccc')
+# 
+# #caption
+# kable(std_sf_m,booktabs=T, caption="STD Rates among males in San Francisco, 2013-2018")
+# 
+# #format args
+# kable(std_sf_m,booktabs=T,format.args=list(big.mark=","))
+
+#final table
+kable(std_sf_m, booktabs=T, col.names=str_to_title(gsub("[.]"," ",names(std_sf_m))), align='lccc', caption="STD Rates among males in San Francisco, 2013-2018",format.args=list(big.mark=","))
+
+
+```
+
+## kableExtra
+```{r}
+#table of STD rates by county, sex for 2017-2018
+std_kbl <- std %>%
+  filter(county!="California" & year>=2017) %>%
+  select(county,sex,disease,year,rate) %>%
+  pivot_wider(names_from=c(disease,year),values_from=rate) %>%
+  data.frame()
+
+#create formatted table
+opts<-options(knitr.kable.NA="-")
+kable(std_kbl,longtable=T,booktabs=T, col.names=c("County","Sex","2017","2018","2017","2018","2017","2018"), caption="STD Rates by county in California, 2017-2018") %>%
+  kable_styling(full_width=F) %>%
+  kable_styling(position="left") %>%
+  kable_styling(font_size=10) %>%
+  column_spec(1, bold=TRUE) %>%
+  column_spec(2:8, bold=if_else(std_kbl$sex=="Total",TRUE,FALSE,FALSE)) %>%
+  # column_spec(1:2, width="3cm") %>%
+  column_spec(4, color=if_else((std_kbl$Chlamydia_2018-std_kbl$Chlamydia_2017)/std_kbl$Chlamydia_2017>0.1, "red","black","black")) %>%
+   column_spec(6, color=if_else((std_kbl$Early.Syphilis_2018 -std_kbl$Early.Syphilis_2017)/std_kbl$Early.Syphilis_2017>0.1, "red","black","black")) %>%
+  column_spec(8, color=if_else((std_kbl$Gonorrhea_2018 -std_kbl$Gonorrhea_2017)/std_kbl$Gonorrhea_2017>0.1, "red","black","black")) %>%
+  add_header_above(c(" "=2,"Chlamydia"=2,"Early Syphilis"=2,"Gonorrhea"=2)) %>%
+  add_header_above(c(" "=2,"Rates per 100,000 population"=6)) %>%
+  # pack_rows("Counties that start with A",1,9)%>%
+  # pack_rows("Counties that start with B",10,12) %>%
+  collapse_rows(columns=1, valign="top") %>%
+  footnote(
+    general="Case data is from the CDPH accessed via the CHHS Open Data portal. Pop denominators are from the department of finance. ",
+    general_title="Data Sources",
+    title_format=c("italic"),
+    threeparttable=T
+  )
+
+```

@@ -1,0 +1,104 @@
+---
+title: "Graphics with ggplot"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggthemes)
+
+filepath <- "https://data.chhs.ca.gov/dataset/4de76cd0-0ac9-4260-8ac3-0637acb444fb/resource/563ba92b-8ac5-48ec-9afd-2f515bbbad66/download/stds-by-disease-county-year-sex.csv"
+
+std <- read_csv(filepath) %>%
+  rename_with(~ tolower(gsub(" ","_",.x,fixed=TRUE))) %>%
+  rename(lower_ci=`lower_95%_ci`, upper_ci=`upper_95%_ci`)
+
+std_gg <- std %>%
+  mutate(year=as.character(year),
+         disease_f=factor(disease,ordered=T,levels=c("Chlamydia","Gonorrhea","Early Syphilis")))
+
+#compare non-factor versus factor
+table(std_gg$disease)
+table(std_gg$disease_f)
+
+```
+
+##ggplot
+
+```{r}
+#Count of chlamydia over time, stratified by sex
+
+std_gg1 <- std_gg %>%
+  filter(county == "California" & disease_f=="Chlamydia" & sex != "Total") %>%
+  select(county, disease_f, cases, year, sex)
+
+#turn off scientific notation
+options(scipen = 999) #turn off scientific notation
+
+ggplot(data=std_gg1, aes(x=year,y=cases)) +
+  geom_bar(aes(fill=sex), stat="identity") +
+  # ylim(0,250000) +
+  scale_y_continuous(limits=c(0,250000),labels = function(x) format(x,big.mark=",",scientific=FALSE)) +
+  scale_fill_manual(name="Sex",values=c("cyan3","darkorange")) +
+  # scale_fill_manual(name="Sex",values=rainbow(2))
+  labs(x="Year",y="Number of Chlamydia Cases",title="Counts of Chalmydia Cases by Sex in California, 2001-2018",caption="Data Source: California Department of Public Health") +
+  theme(legend.position="bottom")
+
+#same as above but not a stacked barchart
+ggplot(data=std_gg1, aes(x=year,y=cases)) +
+  geom_bar(aes(fill=sex), stat="identity", position=position_dodge2()) +
+  # ylim(0,250000) +
+  scale_y_continuous(labels = function(x) format(x,big.mark=",",scientific=FALSE)) +
+  scale_fill_manual(name="Sex",values=c("cyan3","darkorange")) +
+  # scale_fill_manual(name="Sex",values=rainbow(2))
+  labs(x="Year",y="Number of Chlamydia Cases",title="Counts of Chalmydia Cases by Sex in California, 2001-2018",caption="Data Source: California Department of Public Health") +
+  theme(legend.position="bottom")
+
+```
+
+```{r}
+#average county-level rates over time by STD - 2018 
+
+#boxplot
+#rates by county 2018 - total - all 3 STDs 
+std_gg2a <- std_gg %>%
+  filter(county != "California" & year=="2018" & sex=="Total") %>%
+  select(county, disease_f, rate)
+
+ggplot(data=std_gg2a, aes(x=disease_f, y=rate, group=disease_f)) +
+  geom_boxplot(aes(colour=disease_f)) +
+  facet_grid(rows=vars(disease_f))
+
+#rates by county - all years  - all 3 STDs
+std_gg2 <- std_gg %>%
+  filter(county != "California" & sex=="Total") %>%
+  select(county, disease_f, rate, year)
+
+ggplot(data=std_gg2, aes(x=year,y=rate)) +
+  geom_boxplot(aes(colour=disease_f)) +
+  facet_grid(rows=vars(disease_f),scales="free_y",space="fixed") +
+  scale_colour_manual(name="STD",values=c("#5B2C6F","#FF5733","#148F77")) +
+  theme(legend.position="none") +
+  labs(x="Year",y="Case rate per 100,000 population", title="Distribution of STD case rates by county over time",subtitle="2001-2018",caption="Note: y-axes differ by STD and should be compared with caution.")
+
+```
+
+```{r}
+#trend over time in alameda county with confidence intervals
+std_gg3 <- std_gg %>%
+  filter(county=="Alameda" & sex=="Total")
+
+ggplot(data=std_gg3,aes(group=disease_f)) +
+  geom_ribbon(aes(x=year, ymin=lower_ci, ymax=upper_ci),fill="azure3") +
+  # geom_line(aes(x=year,y=rate),linetype="dashed") + #to set line type overall
+  # geom_point(aes(x=year,y=rate,shape=disease_f)) + #to add points and choose shape by group
+  geom_line(aes(x=year,y=rate, linetype=disease_f)) + #to set line by group
+  scale_linetype(name="STD") + #to change the title of the legend
+  # scale_shape_manual(values=c(15,17,19)) #to manually change shape types by group
+   labs(x="Year",y="Case rate per 100,000 population", title = "STD Case Rates in Alameda County",subtitle="2001-2018",caption="Data is from CDPH. The grey bars represent 95% confidence intervals.") +
+  theme_tufte()
+
+```
+
