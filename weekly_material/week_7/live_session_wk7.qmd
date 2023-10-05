@@ -110,3 +110,11 @@ bmi_all3 <- bmi_all1 %>%
   arrange(location, bmi)
 
 ```
+
+
+4. Now, try to summarize the average BMI by location, and make a table of this using kable. Keep only the locations with the 10 highest BMI values in the table. 
+
+```{r}
+
+
+```
