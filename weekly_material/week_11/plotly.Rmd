@@ -1,0 +1,146 @@
+---
+title: "Plotly"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(plotly)
+```
+
+```{r}
+filepath <- "https://data.chhs.ca.gov/dataset/4de76cd0-0ac9-4260-8ac3-0637acb444fb/resource/563ba92b-8ac5-48ec-9afd-2f515bbbad66/download/stds-by-disease-county-year-sex.csv"
+
+std <- read_csv(filepath) %>%
+  rename_with(~ tolower(gsub(" ","_",.x,fixed=TRUE))) 
+
+#using same plots as from the ggplot examples last week
+std_gg <- std %>%
+  mutate(year=as.character(year),
+         disease_f=factor(disease,ordered=T,levels=c("Chlamydia","Gonorrhea","Early Syphilis")))
+
+std_gg1 <- std_gg %>%
+  filter(county == "California" & disease_f=="Chlamydia" & sex != "Total") %>%
+  select(county, disease_f, cases, year, sex)
+
+```
+
+## plotly
+```{r, warning=FALSE}
+
+#simple barchart
+plot_ly(
+  std_gg1,
+  x= ~year,
+  y= ~cases,
+  color= ~sex,
+  type="bar"
+  # mode="bar"
+) 
+
+
+
+```
+
+```{r, warning=FALSE}
+
+#bar chart - side by side vs stacked
+plot_ly(
+  std_gg1,
+  x= ~year,
+  y= ~cases,
+  color= ~sex,
+  type="bar"
+) %>%
+  layout(barmode="stack")
+
+
+```
+
+
+```{r}
+std_gg2a <- std_gg %>%
+  filter(county != "California" & year=="2018" & sex=="Total") %>%
+  select(county, disease_f, rate)
+
+#boxplot
+plot_ly(
+  std_gg2a,
+  y=~rate,
+  color=~disease_f,
+  type="box"
+)
+
+```
+
+
+```{r}
+#trend over time in alameda county with confidence intervals
+std_gg3 <- std_gg %>%
+  filter(county=="Alameda" & sex=="Total")
+
+#make a presentable table
+plot_ly(
+  std_gg3,
+  x=~year,
+  y=~rate,
+  color=~disease_f,
+  type="scatter",
+  mode="lines",
+  colors=c("darkorange","darkcyan","darkslateblue"),
+  text = ~paste('Cases: ',cases,'<br>Population: ',population,'<br>Rate: ',rate)
+) %>%
+  layout(
+    title="Alameda County STD Rates, 2001-2018",
+    yaxis=list(title="Case Rate per 100,000"),
+    xaxis=list(title="Year"),
+    paper_bgcolor="azure",
+    plot_bgcolor="white"
+  )
+
+
+
+```
+
+```{r}
+#add trace example
+std_gg3b <- std_gg %>%
+  filter(county=="Alameda" & sex=="Total") %>%
+  select(year,disease,rate) %>%
+  pivot_wider(names_from=disease, values_from=rate)
+
+plot_ly(
+  std_gg3b,
+  x=~year,
+  y=~`Chlamydia`,
+  name="Chlamydia",
+  type="scatter",
+  mode="markers"
+) %>%
+  add_trace(y=~`Gonorrhea`,name="Gonorrhea",mode="lines")%>%
+  add_trace(y=~`Early Syphilis`,name="Early Syphilis",mode="lines+markers") %>%
+  layout(yaxis=list(title="Rate per 100,000"))
+
+```
+
+```{r}
+#subplot example
+plot1 <- plot_ly(std_gg3b,
+                 x=~year,
+                  y=~`Chlamydia`,
+                  name="Chlamydia",
+                  type="scatter")
+
+plot2 <- plot_ly(std_gg3b,
+                 x=~year,
+                  y=~`Gonorrhea`,
+                  name="Gonorrhea",
+                  type="scatter")
+
+subplot(plot1,plot2,nrows=2,shareX=T)
+
+subplot(plot1,plot2,shareY=T)
+
+```

@@ -1,0 +1,103 @@
+---
+title: "DT and Formattable"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(DT)
+library(formattable)
+```
+
+```{r}
+filepath <- "https://data.chhs.ca.gov/dataset/4de76cd0-0ac9-4260-8ac3-0637acb444fb/resource/563ba92b-8ac5-48ec-9afd-2f515bbbad66/download/stds-by-disease-county-year-sex.csv"
+
+std <- read_csv(filepath) %>%
+  rename_with(~ tolower(gsub(" ","_",.x,fixed=TRUE))) 
+
+std_tbl <- std %>%
+  filter(county!="California" & sex=="Total"& year==2018) %>%
+  select(county,disease,rate) %>%
+  pivot_wider(names_from=disease, values_from=rate)
+
+```
+
+## DT/datatable
+```{r}
+datatable(std_tbl,
+          options = list(
+            pageLength=5,
+            lengthMenu=c(5,10,15,60),
+            order=list(1,'desc'),
+            columnDefs=list(
+              list(className='dt-center',targets=1:3)
+              # ,
+              # list(visible=FALSE,targets=3)
+            ),
+            dom = 'ltip'
+          ),
+          rownames=FALSE,
+          colnames=c("County","Chlamydia rate","Early syphilis rate","Gonorrhea rate"),
+          filter="top",
+          # editable=T,
+          editable=list(target='cell',disable=list(columns=1:3))
+          ) %>%
+          formatRound(2:4,0) %>%
+          formatStyle(1,color="blue") %>%
+          formatStyle(2:4,backgroundColor = styleInterval(c(500),c('white','yellow')))
+
+
+```
+
+## formattable
+```{r}
+std_tbl2 <- read_csv(filepath) %>%
+  filter(County!="California" & Year>=2017 & Sex=="Total" & Disease=="Chlamydia") %>%
+  select(County,Year,Rate,Cases) %>%
+  pivot_wider(names_from=c(Year),names_sep=" ",values_from=c(Rate,Cases)) %>%
+  mutate(`Rate % Change`=round((`Rate 2018`-`Rate 2017`)/`Rate 2017`,3)) %>%
+  mutate(`Cases % Change`=round((`Cases 2018`-`Cases 2017`)/`Cases 2017`,3)) %>%
+  select(County, `Cases 2017`,`Cases 2018`,`Cases % Change`,`Rate 2017`,`Rate 2018`,`Rate % Change` )
+
+#create a format function to use below
+above_avg_bold <- formatter("span", style= x ~ style("font-weight" = ifelse(x>mean(x),"bold",NA)))
+
+formattable(std_tbl2,
+            align=c("l",rep("r",NCOL(std_tbl2)-1)),
+            list(
+              `County`=formatter("span",style= ~style(color="grey",font.weight="bold")),
+              # `Cases 2017`=above_avg_bold,
+              area(col=c(2:3)) ~ color_bar("lightgreen"),
+              area(col=c(5:6)) ~ color_tile("transparent","pink"),
+              `Cases % Change` = formatter("span", 
+                                           style= ~ style(color=ifelse(`Cases % Change`>=0,"red","green")),
+                                           ~icontext(ifelse(`Cases % Change`>=0,"arrow-up","arrow-down"),
+                                                     percent(`Cases % Change`,digits=1))),
+              `Rate % Change` = formatter("span", 
+                                           style= ~ style(color=ifelse(`Rate % Change`>=0,"red","green")),
+                                           ~icontext(ifelse(`Rate % Change`>=0,"arrow-up","arrow-down"),
+                                                     percent(`Rate % Change`,digits=1)))
+            ))
+
+#try to combine datatable and formattable - notice that it works, 
+#but we lose some of the formatting
+as.datatable(formattable(std_tbl2,
+            align=c("l",rep("r",NCOL(std_tbl2)-1)),
+            list(
+              `County`=formatter("span",style= ~style(color="grey",font.weight="bold")),
+              # `Cases 2017`=above_avg_bold,
+              area(col=c(2:3)) ~ color_bar("lightgreen"),
+              area(col=c(5:6)) ~ color_tile("transparent","pink"),
+              `Cases % Change` = formatter("span", 
+                                           style= ~ style(color=ifelse(`Cases % Change`>=0,"red","green")),
+                                           ~icontext(ifelse(`Cases % Change`>=0,"arrow-up","arrow-down"),
+                                                     percent(`Cases % Change`,digits=1))),
+              `Rate % Change` = formatter("span", 
+                                           style= ~ style(color=ifelse(`Rate % Change`>=0,"red","green")),
+                                           ~icontext(ifelse(`Rate % Change`>=0,"arrow-up","arrow-down"),
+                                                     percent(`Rate % Change`,digits=1)))
+            ))
+) 
+```
