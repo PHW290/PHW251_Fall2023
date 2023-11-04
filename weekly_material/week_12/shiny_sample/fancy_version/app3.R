@@ -20,15 +20,24 @@ library(htmltools)
 library(DT)
 library(purrr)
 
+options(scipen=999)
 
-left_col_attr <- list(`Recent Cases` = c("today_cases_rep", "today_cases_rep_chart"),
-                      `Confirmed Cases` = c("cases_epdate", "cases_epdate_chart"),
+'^M.*csv'
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
+cases_deaths <- read_csv("https://data.chhs.ca.gov/dataset/f333528b-4d38-4814-bebb-12db1f10f535/resource/046cdd2b-31e5-4d34-9ed3-b48cdbc4be7a/download/covid19cases_test.csv") %>%
+  select(date, county = area, dof_pop = population, cases_epdate = cases, deaths_DOD = deaths) %>%
+  filter(county %!in% c("California", "Out of state", "Unknown"))
+
+
+us_stats <- fread("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us.csv?_sm_au_=iVVWPQ545LD7stpRGqtBJK3R1GQBC") %>%
+  filter(date == max(as_date(date)))
+
+
+left_col_attr <- list(`Confirmed Recent Daily Cases` = c("recent_cases_ep", "cases_epdate_chart"),
                       `Cases per 100k 7 day avg` = c("recent_cases_ep_rate", "recent_cases_ep_rate_chart"),
-                      `Cases per 100k Cumulative` = c("cases_epdate_rate", "cases_epdate_rate_chart"),
-                      `Recent Deaths` = c("today_deaths_rep", "today_deaths_rep_chart"),
-                      `Confirmed Deaths` = c("deaths_DOD", "deaths_DOD_chart"),
-                      `Deaths per 100k 7 day avg` = c("recent_deaths_dd_rate", "recent_deaths_dd_rate_chart"),
-                      `Deaths per 100k Cumulatve` = c("deaths_DOD_rate", "deaths_DOD_rate_chart")
+                      `Confirmed Recent Daily Deaths` = c("recent_deaths_dd", "deaths_DOD_chart"),
+                      `Deaths per 100k 7 day avg` = c("recent_deaths_dd_rate", "recent_deaths_dd_rate_chart")
 )
 
 ui <- fluidPage(theme = shinytheme("united"),
@@ -53,8 +62,8 @@ ui <- fluidPage(theme = shinytheme("united"),
                                              sliderInput("daterange",
                                                          "Epi curves date range:",
                                                          min = as.Date("2020-01-01","%Y-%m-%d"),
-                                                         max = as.Date("2022-12-01","%Y-%m-%d"),
-                                                         value=c(as.Date("2020-01-01"), as.Date("2022-12-01")),
+                                                         max = as.Date(max(as_date(cases_deaths$date), na.rm = T),"%Y-%m-%d"),
+                                                         value=c(as.Date("2020-01-01"), max(as_date(cases_deaths$date), na.rm = T)),
                                                          timeFormat="%b %Y"),
                                              dataTableOutput("county_table"), style = "height:1000px; overflow-y: scroll;overflow-x: scroll;")
                                     ),
@@ -84,17 +93,7 @@ ui <- fluidPage(theme = shinytheme("united"),
 server <- function(input, output) {
   
   
-  '^M.*csv'
-  '%!in%' <- function(x,y)!('%in%'(x,y))
-  
-  cases_deaths <- read_csv("https://data.chhs.ca.gov/dataset/f333528b-4d38-4814-bebb-12db1f10f535/resource/046cdd2b-31e5-4d34-9ed3-b48cdbc4be7a/download/covid19cases_test.csv") %>%
-    select(date, county = area, dof_pop = population, cases_epdate = cases, deaths_DOD = deaths, cases_repdate = reported_cases, deaths_repdate = reported_deaths) %>%
-    filter(county %!in% c("California", "Out of state", "Unknown"))
-  
-  
-  us_stats <- fread("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us.csv?_sm_au_=iVVWPQ545LD7stpRGqtBJK3R1GQBC") %>%
-    filter(date == max(as_date(date)))
-  
+
   tDatDOF  <- cases_deaths %>% 
     distinct(county, dof_pop) 
   
@@ -107,23 +106,28 @@ server <- function(input, output) {
   chart_left <- function(bar_color = "lightblue", prop_value) {
     paste0("<span style=\"display: inline-block; direction: rtl; unicode-bidi: plaintext; border-radius: 4px; padding-right: 2px; font-size: 0px; background-color: lightblue; width: ", unit.scale(prop_value) * 100, "%\">", prop_value, "</span>")
   }
-  
-  rep_cases_deaths <- cases_deaths %>%
-    mutate(recent_cases_ep = ifelse(date > as_date(max_date) - 14 & date <= as_date(max_date) - 7, cases_epdate / 7, 0),
-           recent_deaths_dd = ifelse(date > as_date(max_date) - 28 & date <= as_date(max_date) - 7, deaths_DOD / 21, 0),
-           today_cases_rep = ifelse(date == max_date, cases_repdate, 0),
-           today_deaths_rep = ifelse(date == max_date, deaths_repdate, 0)
-    ) %>%
-    group_by(county) %>%
-    summarize(across(where(is.numeric), ~sum(., na.rm = T))) %>%
-    mutate(across(c(cases_epdate, deaths_DOD, recent_cases_ep, recent_deaths_dd), ~round((.x /  dof_pop) * 100000, 1), .names = "{.col}_rate"),
-           across(!!unname(unlist(map(left_col_attr, 1))), 
-                  ~chart_left(prop_value = round(.x, 0)), .names = "{.col}_chart")
-    )
-  
+   # input <- list()
+   # input$daterange[1] <- as_date("2021-01-01")
+   # input$daterange[2] <- as_date(max(cases_deaths$date, na.rm = T))
+   # input$county_table_rows_selected <- 13
+
   output$county_table <- DT::renderDataTable({
     
     # Setting the table 
+    display_date <- as_date(input$daterange[2]) - 7
+    rep_cases_deaths <- cases_deaths %>%
+      group_by(county) %>%
+      mutate(cumulative_cases = cumsum(cases_epdate),
+             cumulative_deaths = cumsum(deaths_DOD),
+             recent_cases_ep = round(frollsum(cases_epdate, 14) / 14, 1), 
+             recent_deaths_dd = round(frollsum(deaths_DOD, 28) / 28, 1),
+             across(c(recent_cases_ep, recent_deaths_dd), ~round((.x /  dof_pop) * 100000, 3), .names = "{.col}_rate"),
+             across(!!unname(unlist(map(left_col_attr, 1))), 
+                    ~chart_left(prop_value = round(.x, 0)), .names = "{.col}_chart")) %>%
+      ungroup() %>%
+      filter(date == display_date - 7) 
+
+    
     rep_cases_deaths_tbl <- rep_cases_deaths %>%
       select(county, left_col_attr[[input$select_metric]][1])
     
@@ -160,38 +164,51 @@ server <- function(input, output) {
   
   summary_data <- reactive({
     
+    display_date <- as_date(input$daterange[2]) - 7
+  
     if (length(input$county_table_rows_selected) == 1){
-      rep_cases_deaths %>%
-        filter(county == county_alpha[input$county_table_rows_selected]) %>%
-        select(cases = cases_epdate, deaths = deaths_DOD, cases_repdate, deaths_repdate, recent_cases_ep, recent_deaths_dd, recent_cases_ep_rate, recent_deaths_dd_rate) 
-      # mutate(recent_cases_ep = ifelse(date > as_date(max_date) - 14 & date <= as_date(max_date) - 7, cases_epdate / 7, 0),
-      #        recent_deaths_dd = ifelse(date > as_date(max_date) - 14 & date <= as_date(max_date) - 7, deaths_DOD / 7, 0),
-      #        today_cases = ifelse(date == max_date, cases_repdate, 0),
-      #        today_deaths = ifelse(date == max_date, deaths_repdate, 0)
-      # )
+    cases_deaths %>%
+        group_by(county) %>%
+        mutate(cumulative_cases = cumsum(cases_epdate),
+               cumulative_deaths = cumsum(deaths_DOD),
+               recent_cases_ep = round(frollsum(cases_epdate, 14) / 14, 1), 
+               recent_deaths_dd = round(frollsum(deaths_DOD, 28) / 28, 1),
+               across(c(recent_cases_ep, recent_deaths_dd), ~round((.x /  dof_pop) * 100000, 3), .names = "{.col}_rate")) %>%
+        ungroup() %>%
+        filter(county == county_alpha[input$county_table_rows_selected] & (date == display_date | date == display_date - 7)) %>%
+        select(cases = cumulative_cases, deaths = cumulative_deaths, recent_cases_ep, recent_deaths_dd, recent_cases_ep_rate, recent_deaths_dd_rate, dof_pop)
+
     } else {
-      rep_cases_deaths %>%
-        summarize(across(c(cases_epdate, deaths_DOD, today_cases_rep, today_deaths_rep, recent_cases_ep, recent_deaths_dd, dof_pop), ~sum(.x, na.rm = T) )) %>%
-        select(cases = cases_epdate, deaths = deaths_DOD, today_cases_rep, today_deaths_rep, recent_cases_ep, recent_deaths_dd, dof_pop) %>%
-        mutate(across(c(recent_cases_ep, recent_deaths_dd), ~round((.x /  dof_pop) * 100000, 1), .names = "{.col}_rate"))
+      cases_deaths %>%
+        group_by(date) %>%
+        summarize(across(c(cases_epdate, deaths_DOD, dof_pop), ~sum(.x, na.rm = T) )) %>%
+        mutate(cumulative_cases = cumsum(cases_epdate),
+               cumulative_deaths = cumsum(deaths_DOD),
+               recent_cases_ep = round(frollsum(cases_epdate, 14) / 14, 1), 
+               recent_deaths_dd = round(frollsum(deaths_DOD, 28) / 28, 1),
+               across(c(recent_cases_ep, recent_deaths_dd), ~round((.x /  dof_pop) * 100000, 3), .names = "{.col}_rate")) %>%
+        filter(date == display_date | date == display_date - 7) %>%
+        select(cases = cumulative_cases, deaths = cumulative_deaths, recent_cases_ep, recent_deaths_dd, recent_cases_ep_rate, recent_deaths_dd_rate, dof_pop)
     }
+    
+
   })
   
   plot_data <- reactive({
-    
+    display_date <- as_date(input$daterange[2]) - 7
     if (length(input$county_table_rows_selected) == 1){
       cases_deaths %>%
         filter(county == county_alpha[input$county_table_rows_selected] & between(date, as_date(input$daterange[[1]]), as_date(input$daterange[[2]]))) %>%
         select(date, cases = cases_epdate, deaths = deaths_DOD) %>%
         mutate(roll_mean_cases = frollmean(cases, 7), roll_mean_deaths = frollmean(deaths, 7)) %>%
-        filter(date >= as_date("2020-03-01"))
+        filter(between(date, as_date("2020-03-01"), display_date))
     } else {
       cases_deaths %>%
         filter(between(date, as_date(input$daterange[[1]]), as_date(input$daterange[[2]]))) %>%
         group_by(date) %>%
         summarize(cases = sum(cases_epdate), deaths = sum(deaths_DOD)) %>%
         mutate(roll_mean_cases = frollmean(cases, 7), roll_mean_deaths = frollmean(deaths, 7)) %>%
-        filter(date >= as_date("2020-03-01"))
+        filter(between(date, as_date("2020-03-01"), display_date))
     }
   })
   # alpha <- c(petunia = "today_cases_rep")
@@ -219,19 +236,28 @@ server <- function(input, output) {
   
   output$stats_box <- renderUI({
     
-    case_change <- round((sum(summary_data()$recent_cases_ep, na.rm = T) / (sum(summary_data()$cases, na.rm = T) - sum(summary_data()$recent_cases_ep, na.rm = T)) * 100), 1)
-    death_change <- round((sum(summary_data()$recent_deaths_dd, na.rm = T) / (sum(summary_data()$deaths, na.rm = T) - sum(summary_data()$recent_deaths_dd, na.rm = T)) * 100), 1)
+    display_date <- as_date(input$daterange[2]) - 7
     
-    stats <- c(tot_cases = formatC(sum(summary_data()$cases, na.rm = T), format="f", big.mark=",", digits=0),
-               today_cases = paste0(formatC(sum(summary_data()$recent_cases_ep, na.rm = T)), " (", ifelse(case_change >= 0, "+", ""), case_change, "%)"),
-               case_rate = summary_data()$recent_cases_ep_rate,
+    recent <- unlist(summary_data()[1,])
+    previous <- unlist(summary_data()[2,])
+    
+    print(recent)
+    print(previous)
+    case_change <- round(((recent[["recent_cases_ep"]] - previous[["recent_cases_ep"]]) / previous[["recent_cases_ep"]]) * 100, 1)
+    death_change <- round(((recent[["recent_deaths_dd"]] - previous[["recent_deaths_dd"]]) / previous[["recent_deaths_dd"]]) * 100, 1)
+    
+    stats <- c(tot_cases = formatC(recent[["cases"]], format="f", big.mark=",", digits=0),
+               today_cases = paste0(formatC(recent[["recent_cases_ep"]], format="f", big.mark=",", digits=0), " (", ifelse(case_change >= 0, "+", ""), case_change, "%)"),
+               case_rate = recent[["recent_cases_ep_rate"]],
                us_cases = formatC(us_stats$cases, format="f", big.mark=",", digits=0),
-               tot_deaths = formatC(sum(summary_data()$deaths, na.rm = T), format="f", big.mark=",", digits=0),
-               today_deaths = paste0(formatC(sum(summary_data()$recent_deaths_dd, na.rm = T)), " (", ifelse(death_change >= 0, "+", ""), death_change, "%)"),
-               death_rate = summary_data()$recent_deaths_dd_rate,
+               tot_deaths = formatC(recent[["deaths"]], format="f", big.mark=",", digits=0),
+               today_deaths = paste0(formatC(recent[["recent_deaths_dd"]], format="f", big.mark=",", digits=0), " (", ifelse(death_change >= 0, "+", ""), death_change, "%)"),
+               death_rate = recent[["recent_deaths_dd_rate"]],
                us_deaths = formatC(us_stats$deaths, format="f", big.mark=",", digits=0)
+    
     )
     
+    #print(stats)
     
     
     tagList(
@@ -241,11 +267,11 @@ server <- function(input, output) {
                hr(style = "color: #1F2121; font-weight:bold;"),
                column(6,
                       div(
-                        h2(stats[["tot_cases"]], style = case_style[["bold"]]),
-                        h5("Total Confirmed Cases", style = case_style[["notbold"]]),
+                        h2(stats[["today_cases"]], style = case_style[["bold"]]),
+                        h6(paste0("Average per day between ", display_date - 7, " and ", display_date), style = case_style[["notbold"]]),
                         br(),
-                        h3(stats[["today_cases"]], style = case_style[["bold"]]),
-                        h5(paste0("Average per day between ", max_date - 7, " and ", max_date - 14), style = case_style[["notbold"]])
+                        h3(stats[["tot_cases"]], style = case_style[["bold"]]),
+                        h5("Total Confirmed Cases", style = case_style[["notbold"]])
                       )
                ),
                column(6,
@@ -263,11 +289,11 @@ server <- function(input, output) {
                hr(style = "color: #1F2121; font-weight:bold;"),
                column(6,
                       div(
-                        h2(stats[["tot_deaths"]], style = death_style[["bold"]]),
-                        h5("Total Confirmed Deaths", style = death_style[["notbold"]]),
+                        h2(stats[["today_deaths"]], style = death_style[["bold"]]),
+                        h5(paste0("Average per day between ", display_date - 28, " and ", display_date), style = death_style[["notbold"]]),
                         br(),
-                        h3(stats[["today_deaths"]], style = death_style[["bold"]]),
-                        h5(paste0("Average per day between ", max_date - 7, " and ", max_date - 28), style = death_style[["notbold"]])
+                        h3(stats[["tot_deaths"]], style = death_style[["bold"]]),
+                        h5("Total Confirmed Deaths", style = death_style[["notbold"]])
                       )
                ),
                column(6,
