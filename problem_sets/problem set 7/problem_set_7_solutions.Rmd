@@ -1,0 +1,252 @@
+---
+title: "PHW251 Problem Set 7"
+author: "Teaching Team"
+output: pdf_document
+---
+
+
+```{r, include=F}
+# load libraries and suppress output w/ include=F
+library(tidyverse)
+```
+
+## Part 1
+
+For part 1 of this problem set we will work with motor vehicle crash data from New York City. You can read more about this [publicly available data set on their website](https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95).
+
+The data file is called "Motor_Vehicle_Collisions_Crashes.csv". We want you to perform the following:
+
+1. Rename the column names to lower-case and replace spaces with an underscore.
+2. Select only:
+   + crash_date
+   + number_of_persons_injured
+   + contributing_factor_vehicle_1
+   + vehicle_type_code_1
+3. Drop all rows that contain an NA value.
+4. Make the values in the vehicle_type_code_1 variable all lowercase and replace the spaces with a dash.
+5. Filter the data for vehicles that have a count of at least 500 (appear in the data set 500 times or more)
+   + Hints: group_by(), mutate(), n(), filter()
+6. Calculate the percentage of accidents by vehicle type
+7. Which vehicle group accounted for 1.55% (0.0155) of the accidents?
+
+We have grouped the questions below to push you to perform commands with less code. As you're building your code we recommend going line by line to test, then combining to perform multiple steps in one command.
+
+\newpage
+
+### Questions 1-3
+
+```{r, include=F}
+# load your data
+df_motor <- read_csv("data/Motor_Vehicle_Collisions_Crashes.csv")
+names(df_motor)
+```
+
+
+```{r}
+# YOUR CODE HERE
+
+df_motor <- df_motor %>%
+  # lower case and remove spaces
+  rename_with(~ tolower(gsub(" ","_", .x, fixed=TRUE))) %>%
+  # select certain columns
+  select(crash_date, 
+         number_of_persons_injured, 
+         contributing_factor_vehicle_1, 
+         vehicle_type_code_1) %>% 
+  # drop NA rows
+  drop_na()
+
+dim(df_motor)
+head(df_motor)
+```
+
+\newpage
+
+### Questions 4-5
+
+```{r}
+# YOUR CODE HERE
+
+# lower case vehicles and add dash between spaces
+df_motor <- df_motor %>%
+  mutate(vehicle_type_code_1 = 
+           gsub(" ", "-", ignore.case=T, tolower(vehicle_type_code_1))) %>%
+  # organize by vehicles
+  group_by(vehicle_type_code_1) %>%
+  # create a variable for counts
+  mutate(count = n()) %>%
+  # filter counts > 500
+  filter(count > 500)
+
+head(df_motor)
+min(df_motor$count)
+unique(df_motor$vehicle_type_code_1)
+```
+
+\newpage
+
+### Question 6
+
+```{r}
+# YOUR CODE HERE
+
+# calculate percentage by vehicle type
+df_motor %>%
+  group_by(vehicle_type_code_1) %>%
+  summarize(count = n(),
+            perc = count/nrow(df_motor)) %>%
+  arrange(perc)
+```
+
+### Question 7
+
+
+WRITE YOUR ANSWER HERE
+
+Buses account for 1.55% of the accidents.
+
+* count: 2862
+* perc: 0.0155
+
+Please note, if you try to filter for where perc == 0.0155, you will not get the correct answer unless you round perc to the same number of digits first. 
+
+\newpage
+
+# Part 2
+
+For this part we will work with four tables that are relational to each other. The following keys link the tables together:
+
+* patient_id: patients, schedule
+* visit_id: schedule, visits
+* doctor_id: visits, doctors
+
+```{r, echo=F, include=F, results="markup"}
+patients <- read_csv("data/patients.csv")
+visits <- read_csv("data/visits.csv")
+doctors <- read_csv("data/doctors.csv")
+schedule <- read_csv("data/schedule.csv")
+```
+
+### Question 8
+
+You've been asked to collect information on patients who are actually on the schedule. To start this task, you need to join the patient data to the schedule data, since we only want to keep the observations that are present in both the patient data AND the schedule data.
+
+Which kind of join do you use?
+
+WRITE YOUR ANSWER HERE
+**inner join**
+
+How many observations do you see in your joined data set? Notice that some patients have multiple visits.
+
+```{r}
+# YOUR CODE HERE
+
+# inner join by patient_id
+inner.join.patient <- patients %>% 
+  inner_join(schedule, by = "patient_id")
+
+head(inner.join.patient)
+```
+
+WRITE YOUR ANSWER HERE
+**124 observations**
+
+
+\newpage
+
+### Question 9
+
+In the visits data, we have a variable called "follow_up" where Y means
+a follow-up is needed and N means a follow-up is not needed. How many patients require a follow-up? You will want to first make a join and then subset. Start with the data frame created in the previous question.
+
+```{r}
+# YOUR CODE HERE
+
+left.follow.up <- inner.join.patient %>%
+  left_join(visits, by = "visit_id")
+
+# two ways we can filter:
+follow.up <- left.follow.up %>% filter(follow_up == "Y")
+follow.up <- left.follow.up[which(left.follow.up$follow_up == "Y"), ]
+
+# make sure we count unique patients who need follow-up
+length(unique(follow.up$patient_id))
+# or
+follow.up %>% tally()
+
+```
+
+Which join did you use?
+
+WRITE YOUR ANSWER HERE
+**left join**
+
+How many patients need a follow-up?
+
+WRITE YOUR ANSWER HERE
+**27**
+
+In this instance, there are actually multiple join types that will give you the same answer due to the question and how the data is structured. However, this doesn't apply to all join scenarios!
+
+```{r}
+
+# Can get the same answer with an inner join
+
+inner.follow.up <- inner.join.patient %>%
+  inner_join(visits, by = "visit_id")
+
+follow.up <- inner.follow.up %>% filter(follow_up == "Y")
+
+# make sure we count unique patients who need follow-up
+length(unique(follow.up$patient_id))
+
+
+```
+
+
+```{r}
+
+# Can get the same answer with a right join
+
+right.follow.up <- inner.join.patient %>%
+  right_join(visits, by = "visit_id")
+
+follow.up <- right.follow.up %>% filter(follow_up == "Y")
+
+# make sure we count unique patients who need follow-up
+length(unique(follow.up$patient_id))
+
+
+```
+
+\newpage
+
+### Question 10
+
+Which doctors do these patients need follow-up with? Print out each
+doctor's name.
+
+```{r}
+# YOUR CODE HERE
+
+doctors.contact <- follow.up %>%
+  left_join(doctors, by = "doctor_id")
+
+unique(doctors.contact$doctor)
+```
+
+Which join did you use?
+
+WRITE YOUR ANSWER HERE
+**left join**
+
+
+
+\newpage
+
+
+
+
+
+
+
